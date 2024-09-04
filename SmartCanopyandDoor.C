@@ -3,42 +3,39 @@
 #include <Keypad.h>
 #include <Servo.h>
 
-// Inisialisasi LCD
-LiquidCrystal_I2C lcd(0x27, 16, 2); // Alamat 0x27 atau 0x3F, ukuran 16x2
-
-// Inisialisasi Servo
+// LCD INITIAL
+LiquidCrystal_I2C lcd(0x27, 16, 2); // 
+// servo INITIAL
 Servo myServo;
 
-// Definisikan Keypad
-const byte ROWS = 4; // Ada 4 baris pada keypad
-const byte COLS = 3; // Ada 3 kolom pada keypad
+// Keypad 
+const byte ROWS = 4; 
+const byte COLS = 3; 
 char keys[ROWS][COLS] = {
   {'1', '2', '3'},
   {'4', '5', '6'},
   {'7', '8', '9'},
   {'*', '0', '#'}
 };
-byte rowPins[ROWS] = {9, 8, 7, 6}; // Pins untuk baris
-byte colPins[COLS] = {5, 4, 3};    // Pins untuk kolom
+byte rowPins[ROWS] = {9, 8, 7, 6}; 
+byte colPins[COLS] = {5, 4, 3};    
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
-// Variabel password
 const String correctPassword = "6754";
 String enteredPassword       = "";
 const int maxPasswordLength  = 4;
 
 // Pin
-const int relayPin       = 11; // Pin untuk relay
-const int waterSensorPin = A0; // Pin untuk sensor hujan
-const int LDRSensorPin   = A1; // Pin untuk sensor LDR
+const int relayPin       = 11; 
+const int waterSensorPin = A0; 
+const int LDRSensorPin   = A1; 
 
-// Variabel untuk status relay
-bool relayStatus = false; // Status awal relay: OFF
+bool relayStatus = false; 
 
-// Variabel untuk timing
+
 unsigned long relayOnTime = 0;
-const unsigned long relayDuration = 3000; // Durasi relay ON dalam milidetik
-const unsigned long incorrectPasswordDuration = 1000; // Durasi tampilan password salah dalam milidetik
+const unsigned long relayDuration = 3000; // in milisec
+const unsigned long incorrectPasswordDuration = 1000; //wrong pass in milisec
 
 void setup() {
   // Setup LCD
@@ -47,14 +44,13 @@ void setup() {
   lcd.setCursor(0, 0);
   lcd.print("Enter Password:");
 
-  // Setup Relay Pin
+ //setup relay pin
   pinMode(relayPin, OUTPUT);
-  digitalWrite(relayPin, HIGH); // Mulai dengan relay OFF (Solenoid Tertutup)
+  digitalWrite(relayPin, HIGH); // start in relay OFF (lock)
 
   // Setup Servo
-  myServo.attach(10); // Pin servo
-
-  // Setup Sensor Hujan
+  myServo.attach(10);
+  // Setup water sensor
   pinMode(waterSensorPin, INPUT);
 
   // Setup Sensor LDR
@@ -62,44 +58,43 @@ void setup() {
 }
 
 void loop() {
-  // Baca sensor hujan
   int waterSensorValue = analogRead(waterSensorPin);
-  bool isRaining = waterSensorValue > 612; // Nilai threshold bisa disesuaikan
+  bool isRaining = waterSensorValue > 612; 
 
   // Baca sensor LDR
   int LDRSensorValue = analogRead(LDRSensorPin);
-  bool isDay = LDRSensorValue > 512; // Nilai threshold bisa disesuaikan
+  bool isDay = LDRSensorValue > 512; 
 
-  // Gerakkan servo berdasarkan status sensor
+  // move servo
   if (isDay && !isRaining) {
-    myServo.write(110); // Terang dan tidak hujan: servo bergerak ke kiri (Terbuka)
+    myServo.write(110);
   } else {
-    myServo.write(0); // Selain kondisi di atas: servo bergerak ke kanan (Tertutup)
+    myServo.write(0); 
   }
 
-  // Cek apakah relay aktif
+  // iff relay on
   bool isRelayActive = relayStatus && (millis() - relayOnTime < relayDuration);
 
-  // Proses Keypad hanya jika relay tidak aktif
+  //Keypad hanya jika relay tidak aktif
   if (!isRelayActive) {
     char key = keypad.getKey();
     if (key) {
       if (key == '#') {
         if (enteredPassword == correctPassword) {
-          digitalWrite(relayPin, LOW); // Password benar, relay ON (Solenoid Terbuka)
+          digitalWrite(relayPin, LOW); // correct pass, relay ON
           lcd.clear();
           lcd.setCursor(0, 0);
           lcd.print("Access Granted");
           relayStatus = true;
           relayOnTime = millis(); // Catat waktu ketika relay diaktifkan
         } else {
-          // Password salah, tampilkan pesan kesalahan
-          digitalWrite(relayPin, HIGH); // Password salah, relay OFF (Solenoid Tertutup)
+          //wrong pass, show information
+          digitalWrite(relayPin, HIGH); // wrong pass, relay OFF
           lcd.clear();
           lcd.setCursor(0, 0);
           lcd.print("Access Denied");
           relayStatus = false;
-          delay(incorrectPasswordDuration); // Tampilkan pesan selama 1 detik
+          delay(incorrectPasswordDuration); // show in 1 sec
         }
         // Reset password
         enteredPassword = "";
@@ -127,9 +122,9 @@ void loop() {
     lcd.print("Door Unlocked");
   }
 
-  // Matikan relay setelah 3 detik
+  // relay off in 3 sec
   if (relayStatus && (millis() - relayOnTime >= relayDuration)) {
-    digitalWrite(relayPin, HIGH); // Matikan relay (Solenoid Tertutup)
+    digitalWrite(relayPin, HIGH); // relay off
     relayStatus = false;
     lcd.clear();
     lcd.setCursor(0, 0);
